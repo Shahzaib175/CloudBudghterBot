@@ -16,7 +16,7 @@ echo "📦 Installing Python dependencies into lambda_package..."
 pip install -r requirements.txt -t lambda_package/
 
 echo "📁 Copying Python source files..."
-cp *.py lambda_package/
+cp lambda/*.py lambda_package/
 
 echo "🗜️ Creating Lambda ZIP: cloudbudgter.zip"
 cd lambda_package
