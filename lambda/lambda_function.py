@@ -24,7 +24,6 @@ def publish_to_sns(subject, message):
     else:
         print("SNS Topic not found during publish().")
 
-
 # ---------------- MAIN LAMBDA FUNCTION ----------------
 def lambda_handler(event=None, context=None):
 
@@ -45,31 +44,23 @@ def lambda_handler(event=None, context=None):
 
     # ---------------- INITIALIZATION MODE ----------------
     if initialize:
-        # Only send confirmation message
         send_slack_notification(
             daily_cost, forecast_cost, last_month_cost,
             webhook_url=slack_webhook_url,
             only_confirm=True
         )
-
         return {
             "statusCode": 200,
             "body": "Initialization successful."
         }
 
-    # ---------------- DAILY CRON EXECUTION ----------------
-    # Always send daily cost update (not during initialize)
-    send_slack_notification(
-        daily_cost, forecast_cost, last_month_cost,
-        webhook_url=slack_webhook_url
-    )
-
-    # Check if forecast is above threshold
+    # ---------------- DAILY EXECUTION ----------------
     breached = forecast_cost > budget_threshold
     already_breached = check_breach_state(today)
 
-    if breached and not already_breached:
+    extra_message = None
 
+    if breached and not already_breached:
         subject = "🚨 AWS Budget Breach Detected"
         message = (
             f"Your forecasted AWS cost (${forecast_cost:.2f}) exceeded your threshold (${budget_threshold}).\n"
@@ -77,20 +68,25 @@ def lambda_handler(event=None, context=None):
             f"📆 Last Month Total: ${last_month_cost:.2f}"
         )
 
-        # Email + SNS notification
+        # Email + SNS
         send_alert_email(subject, message)
         publish_to_sns(subject, message)
 
-        # Slack alert
-        send_slack_notification(
-            daily_cost, forecast_cost, last_month_cost,
-            webhook_url=slack_webhook_url,
-            extra_message="🚨 Cost threshold breached! Email + SNS alert sent."
-        )
-
+        # Mark state in DynamoDB
         update_breach_state(today)
+
+        # Add extra Slack message
+        extra_message = "🚨 Cost threshold breached! Email + SNS alert sent."
+
+    # Send Slack update ONCE, with optional extra message
+    send_slack_notification(
+        daily_cost, forecast_cost, last_month_cost,
+        webhook_url=slack_webhook_url,
+        extra_message=extra_message
+    )
 
     return {
         "statusCode": 200,
         "body": "Scheduled execution finished."
     }
+
