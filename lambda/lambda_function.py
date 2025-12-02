@@ -76,7 +76,7 @@ def lambda_handler(event=None, context=None):
         update_breach_state(today)
 
         # Add extra Slack message
-        extra_message = "🚨 Cost threshold breached! Email + SNS alert sent."
+        extra_message = "⚠️ Forecasted AWS cost has exceeded the defined budget threshold."
 
     # Send Slack update ONCE, with optional extra message
     send_slack_notification(
